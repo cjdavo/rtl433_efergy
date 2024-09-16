@@ -42,8 +42,8 @@ time:
 #    id: time
   - platform: sntp
     id: time_ntp
-    timezone: Europe/Stockholm
-    servers: 192.168.21.10
+    timezone: Australia/Perth
+    servers: 192.168.0.1
 
 
 mqtt:
