@@ -1,100 +1,37 @@
-#include "esphome.h"  // Correct inclusion of ESPHome components
-#undef yield
-#undef millis
-#undef micros
-#undef delay
-#undef delayMicroseconds
+#pragma once
+#include "esphome.h"
 
-#include "rtl_433_ESP.h"
-#include <map>
-#include <string>
-
-class Rtl433ToMqtt : public Component, public mqtt::CustomMQTTDevice {
+class Rtl433ToMqtt : public esphome::Component, public esphome::mqtt::CustomMQTTDevice {
  public:
-  // Rtl433ToMqtt(const char* source, sensor::Sensor* sensor_1, int received_id_1, sensor::Sensor* sensor_2, int received_id_2)
-  //     : source_(source), sensor_1_(sensor_1), sensor_2_(sensor_2), received_id_1_(received_id_1), received_id_2_(received_id_2) {
-  //   instance_ = this;
-  // }
-
-  Rtl433ToMqtt(const char* source) : source_(source) {
-    instance_ = this;
-  }
-
-  static Rtl433ToMqtt* get(const custom_component::CustomComponentConstructor& c) {
-    return static_cast<Rtl433ToMqtt*>(c.get_component(0));
-  }
+  Rtl433ToMqtt(const std::string &name, sensor::Sensor *sensor_1, sensor::Sensor *sensor_2)
+      : name_(name), sensor_1_(sensor_1), sensor_2_(sensor_2) {}
 
   void setup() override {
-    rf_.initReceiver(RF_MODULE_RECEIVER_GPIO, RF_MODULE_FREQUENCY);
-    rf_.setCallback(&Rtl433ToMqtt::process_dispatch, buffer_, sizeof(buffer_));
-    rf_.enableReceiver();
+    // Initialization logic
   }
 
   void loop() override {
-    rf_.loop();
+    // Main loop
   }
 
-  void stop() {
-    rf_.disableReceiver();
+  void process_json(JsonObject &doc) {
+    int received_id = doc["id"] | 0;
+    float current_value = doc["current"] | 0.0;
+
+    // Update sensor based on the ID
+    if (received_id == 50985) {
+      sensor_1_->publish_state(current_value);
+    } else if (received_id == 50986) {
+      sensor_2_->publish_state(current_value);
+    }
   }
 
  private:
-  const char* source_;
-  char buffer_[512];
-  rtl_433_ESP rf_;
-  static Rtl433ToMqtt* instance_;
-  
-  // Use the sensors passed from YAML
-  sensor::Sensor* sensor_1_;  // Link to sensor defined in YAML
-  sensor::Sensor* sensor_2_;  // Link to sensor defined in YAML
-
-  // Received IDs for each sensor
-  int received_id_1_;
-  int received_id_2_;
-
-  static void process_dispatch(char* msg) {
-    if (instance_ != nullptr) instance_->process(msg);
-  }
-
-  void process(char* msg) {
-    ESP_LOGD("custom", "Received msg: %s", msg);
-    parse_json(msg, [this](JsonObject doc) {
-      process_json(doc);
-      return true;
-    });
-  }
-
-  void process_json(JsonObject doc) {
-    // const char* received_model = doc["model"];
-    // int received_id = doc["id"] | 0;
-    // float current_value = doc["current"] | 0.0;
-
-    // // Check received ID and update the corresponding sensor
-    // if (received_id == received_id_1_) {
-    //   sensor_1_->publish_state(current_value);
-    // } else if (received_id == received_id_2_) {
-    //   sensor_2_->publish_state(current_value);
-    // }
-    const char* received_model = doc["model"];
-    int received_id_value = id(received_id);  // Fetch the global value
-    int received_id_value2 = id(received_id2);  // Fetch the global value
-
-    int received_id_from_signal = doc["id"] | 0;
-    float current_value = doc["current"] | 0.0;
-
-    // Compare received ID from Home Assistant with ID from RF signal
-    if (received_id_value == received_id_from_signal) {
-      // id(sensor_1)->publish_state(current_value);
-      sensor_1->publish_state(current_value);
-    } else if (received_id_value2 == received_id_from_signal) {
-      sensor_2->publish_state(current_value);
-    }
-
-
-    // ESP_LOGI("custom", "Updated sensor for model: %s with ID: %d", received_model, received_id);
-    ESP_LOGI("custom", "Updated sensor for model: %s with ID: %d", received_model, received_id_from_signal);
-  }
+  std::string name_;
+  sensor::Sensor *sensor_1_;
+  sensor::Sensor *sensor_2_;
 };
 
-// Define the static member variable outside the class definition
-Rtl433ToMqtt* Rtl433ToMqtt::instance_ = nullptr;
+  
+  
+    
