@@ -1,1 +1,187 @@
+esphome:
+  name: omg-home-433
+  friendly_name: OMG-HOME-433
+  libraries:
+    - rtl_433_ESP=https://github.com/NorthernMan54/rtl_433_ESP.git#Refresh-to-rtl_433-23.11
+    - RadioLib@6.1.0
+    - ssd1306=https://github.com/ThingPulse/esp8266-oled-ssd1306.git#f96fd6a
+    - LoRa=https://github.com/sandeepmistry/arduino-LoRa.git#f4a1d27
+  
 
+  includes:
+    - rtl433-to-mqtt.h
+    
+  platformio_options:
+    lib_ldf_mode: "chain+"
+    build_flags:
+      #- '-DLOG_LEVEL=LOG_VERBOSE'
+      - '-DONBOARD_LED=LED_BUILTIN'
+      #- '-DPUBLISH_UNPARSED=true'
+      #- '-DRAW_SIGNAL_DEBUG'
+      #- '-DRTL_VERBOSE=13'
+      #- '-DRTL_DEBUG=4' 
+      #- '-DMY_DEVICES'
+      #- '-DREGOOKFIX_DEBUG'
+      #- '-DMEMORY_DEBUG'
+      #- '-DDMOD_DEBUG'
+      #- '-DRF_MODULE_INIT_STATUS'
+      - '-DRF_SX1278'
+      - '-DOOK_MODULATION=false' #change for OOK Modulation
+      - '-DRF_MODULE_FREQUENCY=433.55'
+
+esp32:
+  board: ttgo-lora32-v21
+  framework:
+    type: arduino
+    version: recommended
+    platform_version: 6.1.0
+  
+
+time:
+#  - platform: homeassistant
+#    id: time
+  - platform: sntp
+    id: time_ntp
+    timezone: Europe/Stockholm
+    servers: 192.168.21.10
+
+
+mqtt:
+  topic_prefix: omg_433-10
+  discovery: false
+  broker: 192.168.14.X
+  port: 1883
+  username: 
+  password:
+  discovery_prefix: homeassistant
+
+
+
+custom_component:
+    - id: rtl433
+      lambda: |-
+        auto rtl433 = new Rtl433ToMqtt("${name}");   
+        return {rtl433};
+        
+sensor:
+  - platform: custom
+    lambda: |-
+      auto sensor_1 = new sensor::Sensor();
+      auto sensor_2 = new sensor::Sensor();
+      return {sensor_1, sensor_2};  // Add more if needed
+    sensors:
+      - id: sensor_1
+        name: "Current Sensor 1"
+        unit_of_measurement: "A"
+        accuracy_decimals: 4
+
+      - id: sensor_2
+        name: "Current Sensor 2"
+        unit_of_measurement: "A"
+        accuracy_decimals: 4
+
+  - platform: homeassistant
+    id: Current_Voltage
+    entity_id: sensor.c_blah_house_ac_voltage
+    internal: true  # Optional: hide from Home Assistant, useful for internal use
+
+interval:
+  - interval: 50s
+    then:
+      - display.page.show_next: my_display
+      - component.update: my_display
+
+  - interval: 15s
+    then:
+      - display.page.show: page1
+      - component.update: my_display
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: 
+  services:
+    - service: set_received_id
+      variables:
+        id_value: int
+      then:
+        - lambda: |-
+            id(received_id) = id_value;
+            ESP_LOGD("custom", "Received ID from Home Assistant: %d", id_value);
+    - service: set_received_id2
+      variables:
+        id_value2: int
+      then:
+        - lambda: |-
+            id(received_id2) = id_value2;
+            ESP_LOGD("custom", "Received ID from Home Assistant: %d", id_value2);
+globals:
+  - id: received_id
+    type: int
+    restore_value: true
+    initial_value: '50985'
+  - id: received_id2
+    type: int
+    restore_value: true
+    initial_value: '7557'
+
+
+ota:
+  - platform: esphome
+    password: 
+  
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Omg-Home-915 Fallback Hotspot"
+    password: 
+
+captive_portal:
+
+web_server:
+  port: 80
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+  frequency: 400kHz
+  
+display:
+  - platform: ssd1306_i2c
+    
+    model: "SSD1306 128x64"
+    # reset_pin: -1
+    id: my_display
+    address: 0x3C
+    
+    pages:
+      - id: page1
+        lambda: |-
+          it.printf(0, 0, id(font3), "Current1: %.4f A", id(sensor_1).state);
+          it.printf(0, 15, id(font3), "Current2: %.4f A", id(sensor_2).state);
+          it.printf(0, 30, id(font3), "Voltage: %.4f V", id(Current_Voltage).state);
+
+font:
+  - file: "gfonts://Roboto"
+    id: font1
+    size: 20
+
+  - file: "gfonts://Roboto"
+    id: font2
+    size: 48
+
+  - file: "gfonts://Roboto"
+    id: font3
+    size: 14
+
+  - file: "gfonts://Roboto"
+    id: font4
+    size: 32
+    
