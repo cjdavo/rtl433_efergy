@@ -1,0 +1,18 @@
+{
+  "name": "Rtl433ToMqtt",
+  "version": "1.0.0",
+  "build": {
+    "flags": [
+      "-I include"
+    ],
+    "srcFilter": "+<*>"
+  },
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "dependencies": [
+    {
+      "name": "ESPHome",
+      "version": "^1.19.0"
+    }
+  ]
+}
