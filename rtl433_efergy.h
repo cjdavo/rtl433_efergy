@@ -1,6 +1,9 @@
 #pragma once
 #include "esphome.h"
 
+namespace esphome {
+namespace rtl433_efergy_component {
+
 class Rtl433ToMqtt : public esphome::Component, public esphome::mqtt::CustomMQTTDevice {
  public:
   Rtl433ToMqtt(const std::string &name, sensor::Sensor *sensor_1, sensor::Sensor *sensor_2)
@@ -15,7 +18,7 @@ class Rtl433ToMqtt : public esphome::Component, public esphome::mqtt::CustomMQTT
   }
 
   void process_json(JsonObject &doc) {
-    int received_id = doc["id"] | 0;
+    int received_id = doc["id"] | 0
     float current_value = doc["current"] | 0.0;
 
     // Update sensor based on the ID
@@ -32,6 +35,7 @@ class Rtl433ToMqtt : public esphome::Component, public esphome::mqtt::CustomMQTT
   sensor::Sensor *sensor_2_;
 };
 
-  
+}
+}
   
     
